@@ -80,7 +80,7 @@ exports.readCard = async (req, res) => {
       if (parent?.parentMobile) {
 
         const smsText =
-          `Ayya Nadar Janaki Ammal College\n\n` +
+          `The Standard Fireworks Rajaratnam college for women Sivakasi\n\n` +
           `Student: ${student.name}\n` +
           `Department: ${student.cls}\n` +
           `Status: LOGIN\n` +
@@ -107,7 +107,7 @@ exports.readCard = async (req, res) => {
       if (parent?.parentMobile) {
 
         const smsText =
-          `Ayya Nadar Janaki Ammal College\n\n` +
+          `The Standard Fireworks Rajaratnam college for women Sivakasi\n\n` +
           `Student: ${student.name}\n` +
           `Department: ${student.cls}\n` +
           `Status: LOGOUT\n` +

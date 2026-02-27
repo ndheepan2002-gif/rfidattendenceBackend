@@ -74,7 +74,7 @@ exports.addStudent = async (req, res) => {
 
         // 4️⃣ Send SMS
         const smsText =
-            `Ayya Nadar Janaki Ammal College\n` +
+            `The Standard Fireworks Rajaratnam college for women Sivakasi\n` +
             `Login Details :\n` +
             `Username: ${username}\n` +
             `Password: ${defaultPassword}\n` +
