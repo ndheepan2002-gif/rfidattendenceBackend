@@ -3,6 +3,7 @@ const {
   markLogin,
   markLogout,
   getAttendanceByStudent,
+  getAttendanceByStudentID,
   getStudentsWithAttendance,
   getAttendanceForParent,
   getStudentParent,
@@ -17,6 +18,7 @@ router.get("/parent", auth, getAttendanceForParent);
 router.get("/student-parent", auth, getStudentParent);
 router.get("/stats", getDashboardStats);
 router.get("/:studentId", getAttendanceByStudent);
+router.get("/id/:studentId", getAttendanceByStudentID);
 
 
 module.exports = router;

@@ -47,21 +47,114 @@ exports.getAttendanceByStudent = async (req, res) => {
   res.json(records);
 };
 
-exports.getStudentsWithAttendance = async (req, res) => {
-  const today = new Date().toISOString().split("T")[0];
+exports.getAttendanceByStudentID = async (req, res) => {
+  try {
+    const studentId = req.params.studentId;
 
-  const students = await Student.find().lean();
+    const records = await Attendance.find({
+      student: studentId,
+    }).sort({ date: 1 });
 
-  for (let s of students) {
-    const attendance = await Attendance.findOne({
-      student: s._id,
-      date: today,
+    console.log("records", records);
+
+    if (records.length === 0) {
+      return res.json([]);
+    }
+
+    // 🔷 Convert to map
+    const recordMap = {};
+    records.forEach((r) => {
+      recordMap[r.date] = r;
     });
 
-    s.status = attendance ? attendance.status : "ABSENT";
-  }
+    // 🔷 Start from first attendance date
+    const startDate = new Date(records[0].date);
+    const today = new Date();
 
-  res.json(students);
+    let result = [];
+
+    for (
+      let d = new Date(startDate);
+      d <= today;
+      d.setDate(d.getDate() + 1)
+    ) {
+      const formatted = d.toISOString().split("T")[0];
+
+      if (recordMap[formatted]) {
+        result.push({
+          date: formatted,
+          status: "PRESENT",
+          loginTime: recordMap[formatted].loginTime,
+          logoutTime: recordMap[formatted].logoutTime,
+        });
+      } else {
+        result.push({
+          date: formatted,
+          status: "ABSENT",
+          loginTime: null,
+          logoutTime: null,
+        });
+      }
+    }
+
+    res.json(result.reverse());
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getStudentsWithAttendance = async (req, res) => {
+  try {
+    const { date, fromDate, toDate, status } = req.query;
+
+    let selectedDate = date || fromDate;
+
+    const students = await Student.find().lean();
+
+    for (let s of students) {
+
+      let attendanceQuery = { student: s._id };
+
+      if (selectedDate) {
+        attendanceQuery.date = selectedDate;
+      }
+
+      if (fromDate && toDate) {
+        attendanceQuery.date = {
+          $gte: fromDate,
+          $lte: toDate
+        };
+      }
+
+      const attendance = await Attendance.find(attendanceQuery).lean();
+
+      s.attendance = attendance;
+
+      // 🔥 ALWAYS SET STATUS
+      if (selectedDate) {
+        if (attendance.length > 0) {
+          s.status = attendance[0].status;
+          s.loginTime = attendance[0].loginTime;
+          s.logoutTime = attendance[0].logoutTime;
+        } else {
+          s.status = "ABSENT";
+          s.loginTime = null;
+          s.logoutTime = null;
+        }
+      } else {
+        s.status = "N/A";
+      }
+    }
+
+    if (status && status !== "ALL") {
+      return res.json(students.filter(s => s.status === status));
+    }
+
+    res.json(students);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // 🔹 GET ATTENDANCE FOR LOGGED-IN PARENT
