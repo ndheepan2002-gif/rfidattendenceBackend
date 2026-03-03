@@ -78,7 +78,12 @@ exports.getAttendanceByStudentID = async (req, res) => {
       d <= today;
       d.setDate(d.getDate() + 1)
     ) {
-      const formatted = d.toISOString().split("T")[0];
+      const formatted =
+        d.getFullYear() +
+        "-" +
+        String(d.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(d.getDate()).padStart(2, "0");
 
       if (recordMap[formatted]) {
         result.push({
