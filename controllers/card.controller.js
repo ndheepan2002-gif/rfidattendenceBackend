@@ -75,7 +75,6 @@ exports.readCard = async (req, res) => {
         loginTime: new Date(),
         status: "PRESENT"
       });
-      console.log("Parrent",parent);
       // 🔥 SEND SMS
       if (parent?.parentMobile) {
 

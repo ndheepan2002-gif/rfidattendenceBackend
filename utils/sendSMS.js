@@ -2,7 +2,6 @@ const axios = require("axios");
 
 exports.sendSMS = async (mobile, message) => {
   try {
-    console.log("FAST2SMS KEY:", process.env.FAST2SMS_API_KEY);
     const response = await axios.post(
       "https://www.fast2sms.com/dev/bulkV2",
       {
@@ -19,7 +18,6 @@ exports.sendSMS = async (mobile, message) => {
       }
     );
 
-    console.log("✅ SMS Sent:", response.data);
     return response.data;
 
   } catch (err) {

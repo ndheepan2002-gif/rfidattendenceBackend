@@ -47,6 +47,67 @@ exports.getAttendanceByStudent = async (req, res) => {
   res.json(records);
 };
 
+exports.getStudentsWithAttendance = async (req, res) => {
+  try {
+    const { date, fromDate, toDate, status, cls } = req.query;
+    const today = new Date().toISOString().split("T")[0];
+    let selectedDate = date || fromDate || today;
+
+    let studentQuery = {};
+
+    if (cls && cls !== "All") {
+      studentQuery.cls = cls;
+    }
+
+    const students = await Student.find(studentQuery).lean();
+
+    for (let s of students) {
+
+      let attendanceQuery = { student: s._id };
+
+      if (fromDate && toDate) {
+        attendanceQuery.date = {
+          $gte: new Date(selectedDate + "T00:00:00.000Z"),
+          $lte: new Date(selectedDate + "T23:59:59.999Z")
+        };
+      } else if (selectedDate) {
+        attendanceQuery.date = selectedDate;
+      }
+
+      const attendance = await Attendance.find(attendanceQuery).lean();
+
+      s.attendance = attendance;
+
+      // ✅ FIXED STATUS LOGIC
+      if (attendance.length > 0) {
+        s.status = attendance[0].status;
+        s.loginTime = attendance[0].loginTime;
+        s.logoutTime = attendance[0].logoutTime;
+      } else {
+        s.status = "ABSENT";
+        s.loginTime = null;
+        s.logoutTime = null;
+      }
+    }
+
+    // ✅ STATUS FILTER FIX (case-safe)
+    if (status && status !== "ALL") {
+      return res.json(
+        students.filter(
+          s => s.status?.toUpperCase() === status.toUpperCase()
+        )
+      );
+    }
+    students.forEach(s => {
+      // console.log("Student:", s.name, "Status:", s.status);
+    });
+    res.json(students);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getAttendanceByStudentID = async (req, res) => {
   try {
     const studentId = req.params.studentId;
@@ -55,19 +116,29 @@ exports.getAttendanceByStudentID = async (req, res) => {
       student: studentId,
     }).sort({ date: 1 });
 
-    console.log("records", records);
-
     if (records.length === 0) {
       return res.json([]);
     }
 
-    // 🔷 Convert to map
+    // ✅ Helper function to format date
+    const formatDate = (date) => {
+      const d = new Date(date);
+      return (
+        d.getFullYear() +
+        "-" +
+        String(d.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(d.getDate()).padStart(2, "0")
+      );
+    };
+
+    // 🔷 Convert to map (FIXED)
     const recordMap = {};
     records.forEach((r) => {
-      recordMap[r.date] = r;
+      const key = formatDate(r.date); // ✅ IMPORTANT FIX
+      recordMap[key] = r;
     });
 
-    // 🔷 Start from first attendance date
     const startDate = new Date(records[0].date);
     const today = new Date();
 
@@ -78,17 +149,12 @@ exports.getAttendanceByStudentID = async (req, res) => {
       d <= today;
       d.setDate(d.getDate() + 1)
     ) {
-      const formatted =
-        d.getFullYear() +
-        "-" +
-        String(d.getMonth() + 1).padStart(2, "0") +
-        "-" +
-        String(d.getDate()).padStart(2, "0");
+      const formatted = formatDate(d);
 
       if (recordMap[formatted]) {
         result.push({
           date: formatted,
-          status: "PRESENT",
+          status: recordMap[formatted].status || "PRESENT", // ✅ dynamic
           loginTime: recordMap[formatted].loginTime,
           logoutTime: recordMap[formatted].logoutTime,
         });
@@ -108,59 +174,7 @@ exports.getAttendanceByStudentID = async (req, res) => {
   }
 };
 
-exports.getStudentsWithAttendance = async (req, res) => {
-  try {
-    const { date, fromDate, toDate, status } = req.query;
 
-    let selectedDate = date || fromDate;
-
-    const students = await Student.find().lean();
-
-    for (let s of students) {
-
-      let attendanceQuery = { student: s._id };
-
-      if (selectedDate) {
-        attendanceQuery.date = selectedDate;
-      }
-
-      if (fromDate && toDate) {
-        attendanceQuery.date = {
-          $gte: fromDate,
-          $lte: toDate
-        };
-      }
-
-      const attendance = await Attendance.find(attendanceQuery).lean();
-
-      s.attendance = attendance;
-
-      // 🔥 ALWAYS SET STATUS
-      if (selectedDate) {
-        if (attendance.length > 0) {
-          s.status = attendance[0].status;
-          s.loginTime = attendance[0].loginTime;
-          s.logoutTime = attendance[0].logoutTime;
-        } else {
-          s.status = "ABSENT";
-          s.loginTime = null;
-          s.logoutTime = null;
-        }
-      } else {
-        s.status = "N/A";
-      }
-    }
-
-    if (status && status !== "ALL") {
-      return res.json(students.filter(s => s.status === status));
-    }
-
-    res.json(students);
-
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
 
 // 🔹 GET ATTENDANCE FOR LOGGED-IN PARENT
 exports.getAttendanceForParent = async (req, res) => {
